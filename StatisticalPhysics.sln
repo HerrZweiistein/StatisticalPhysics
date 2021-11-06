@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31825.309
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StatisticalPhysics", "StatisticalPhysics\StatisticalPhysics.vcxproj", "{0639101A-3951-407F-84C5-AFBE0ABADC19}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Assignment03", "StatisticalPhysics\StatisticalPhysics.vcxproj", "{0639101A-3951-407F-84C5-AFBE0ABADC19}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

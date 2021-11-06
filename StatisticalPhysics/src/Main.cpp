@@ -1,170 +1,105 @@
-﻿#include<iostream>
-#include<math.h>
-#include<random>
-#include<array>
+﻿#include"lattice.h"
+#include<string>
+#include<sstream>
+#include <iomanip>
+#include <fstream>
+#include <ios>
 
-#define listN std::array<short, N>
+void write(double T, int sweeps)
+{   
+    lattice2d lat(T);
+    lat.reachEquilibrium(1000);
+    double m, m2, e;
 
-const int rootN = 50;
-const int N = rootN * rootN;
-const double J = 1;
-const double temperature = 2.26;
-const double k_boltzmann = 1;
+    std::string result = "%d";
 
-class lattice2d
+    for (int j = 0; j < sweeps; j++)
+    {
+        for (int i = 0; i < N; i++)
+        {
+            lat.randomFlip();
+        }
+
+        m = lat.mag_total / N;
+        m2 = m * m;
+        e = lat.energy / N;
+
+
+    }
+}
+
+void write(std::ofstream& stream, double val)
 {
-public:
-    listN spins;
-    double energy;
-    int mag_total;
+    stream << std::fixed << std::setprecision(8) << val;
+}
 
-public:
-    lattice2d()
-    {
-        resample();
-    }
 
-    void printConfiguration()
+int main()
+{
+    double Tmin = 0.1, Tmax = 3;
+    int steps = 800;
+    int sweeps = 800;
+    int thermalisation = 10000;
+    double step_size = (Tmax - Tmin) / steps;
+
+    std::ofstream mstream_e("e.txt"); mstream_e.close();
+    std::ofstream mstream_m("m.txt"); mstream_m.close();
+    std::ofstream mstream_m2("m2.txt"); mstream_m2.close();
+
+    std::ofstream stream_e("e.txt", std::ios_base::app | std::ios_base::out);
+    std::ofstream stream_m("m.txt", std::ios_base::app | std::ios_base::out);
+    std::ofstream stream_m2("m2.txt", std::ios_base::app | std::ios_base::out);
+
+    lattice2d lat(Tmin);
+    lat.reachEquilibrium(thermalisation);
+    listN last_spins = lat.spins;
+
+    for (int i = 0; i < steps; i++)
     {   
-        char c;
-        std::cout << std::endl;
-        std::cout << "E=" << energy << std::endl;
-        std::cout << "M=" << mag_total << std::endl;
-        for (int x = 0; x < rootN; x++)
+        
+        double Tcurrent = Tmin + i * step_size;
+        lat.setTemperature(Tcurrent);
+        lat.setSpins(last_spins);
+
+        std::cout << Tcurrent << std::endl;
+
+        double m, m2, e;
+
+        write(stream_e, Tcurrent);
+        write(stream_m, Tcurrent);
+        write(stream_m2, Tcurrent);
+
+        for (int j = 0; j < sweeps; j++)
         {
-            for (int y = 0; y < rootN; y++)
+            for (int k = 0; k < N; k++)
             {
-                int index = getIndex(x, y);
-                
-                if (spins[index] == 1) c = '+';
-                else c = '-';
-                std::cout << c << " ";
+                lat.randomFlip();
             }
-            std::cout << std::endl;
+
+            m = lat.mag_total / N;
+            m2 = m * m;
+            e = lat.energy / N;
+
+            stream_e << ";";
+            write(stream_e, e);
+
+            stream_m << ";";
+            write(stream_m, m);
+
+            stream_m2 << ";";
+            write(stream_m2, m2);
+            
         }
-        std::cout << std::endl;
+        stream_e << std::endl;
+        stream_m << std::endl;
+        stream_m2 << std::endl;
+
+        last_spins = lat.spins;
+        //delete &lat;
     }
 
-    void resample()
-    {
-        std::random_device rand_dev;
-        std::mt19937 generator(rand_dev());
-        std::uniform_real_distribution<double> r_uniform(0.0f, 1.0f);
+    stream_e.close();
+    stream_m.close();
+    stream_m2.close();
 
-        for (int i = 0; i < N; i++)
-        {
-            if (r_uniform(generator) > 0.5f) spins[i] = 1;
-            else spins[i] = -1;
-        }
-        energy = getEnergy();
-        mag_total = getM();
-    }
-
-    void setSpins(listN values)
-    {
-        for (int i = 0; i < N; i++)
-        {
-            spins[i] = values[i];
-        }
-        energy = getEnergy();
-        mag_total = getM();
-    }
-
-    void randomFlip()
-    {
-        std::random_device rand_dev;
-        std::mt19937 generator(rand_dev());
-        std::uniform_int_distribution<int> n_uniform(0, N - 1);
-        std::uniform_real_distribution<double> r_uniform(0.0f, 1.0f);
-
-        int index = n_uniform(generator);
-        double r = r_uniform(generator);
-
-        double old_sum = -2.0f * energy / J;
-        short new_spin = -spins[index];
-
-        double new_sum = old_sum + 4.0f * new_spin * getNearestSum(index);
-        double new_energy = -J * 0.5f * new_sum;
-
-        double delta_energy = new_energy - energy;
-
-        if (delta_energy <= 0 || r <= exp(-delta_energy / (k_boltzmann * temperature)))
-        {
-            spins[index] = new_spin;
-            mag_total += 2 * new_spin;
-            energy = new_energy;
-        }
-    }
-
-    void reachEquilibrium(int steps)
-    {
-        for (int i = 0; i < steps; i++)
-        {
-            randomFlip();
-        }
-        std::cout << "N=" << N << std::endl;
-        std::cout << "kB*T/J=" << temperature*k_boltzmann/J << std::endl;
-        std::cout << steps << " steps has been made to reach thermal equilibrium." << std::endl;
-        std::cout << "E/N=" << energy / N << std::endl << "M/N=m=" <<  (double)mag_total/(double)N << std::endl;
-        std::cout << std::endl;
-    }
-
-    int getIndex(int row, int col)
-    {
-        if (row >= rootN) row = row % rootN;
-        if (col >= rootN) col = col % rootN;
-
-        if (row < 0) row = rootN - abs(row) % rootN;
-        if (col < 0) col = rootN - abs(col) % rootN;
-
-        return rootN * row + col;
-    }
-
-    short getNearestSum(int index)
-    {
-        int row, col, top, right, bottom, left;
-        row = index / rootN;
-        col = index % rootN;
-
-        top = getIndex(row - 1, col);
-        right = getIndex(row, col + 1);
-        bottom = getIndex(row + 1, col);
-        left = getIndex(row, col - 1);
-
-        return (spins[top] + spins[right] + spins[bottom] + spins[left]);
-    }
-
-    double getEnergy()
-    {
-
-        double result = 0;
-        for (int i = 0; i < N; i++)
-        {
-            result += spins[i] * getNearestSum(i);
-        }
-        return -J * 0.5f * result;
-    }
-
-    int getM()
-    {
-        int result = 0;
-        for (int i = 0; i < N; i++)
-        {
-            result += spins[i];
-        }
-        return result;
-    }
-
-    double getm()
-    {
-        return (double)mag_total / (double)N;
-    }
-};
-
-int main() {
-
-    lattice2d lat;
-
-    lat.reachEquilibrium(100000);
-    lat.printConfiguration();
 }
